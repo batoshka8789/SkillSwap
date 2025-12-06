@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>SkillSwap PRO</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+<!-- Socket.io клиент -->
+<script src="/socket.io/socket.io.js"></script>
+
+<style>
+:root{
+  --bg:#f6f8fb; --card:#ffffff; --muted:#6b7280; --accent1:#2563eb; --accent2:#7c3aed;
+  --radius:14px; --glass: rgba(255,255,255,0.6); --text:#0b1220; --border:#e6e9ef;
+  --success:#059669; --danger:#e11d48;
+  font-family: 'Poppins', system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;padding:0}
+body{margin:0;background:linear-gradient(180deg,#f3f7ff 0%,var(--bg) 60%);color:var(--text);font-family:inherit; -webkit-font-smoothing:antialiased;}
+.container{max-width:1200px;margin:28px auto;padding:20px}
+.header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{
+  width:46px;height:46px;border-radius:10px;
+  background:linear-gradient(135deg,var(--accent1),var(--accent2));
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px;box-shadow:0 8px 30px rgba(37,99,235,0.12);
+}
+.title{font-weight:800;font-size:18px}
+.subtitle{font-size:13px;color:var(--muted)}
+.controls{display:flex;gap:8px;align-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 18px;border-radius:12px;text-decoration:none;background:#eef2ff;color:var(--accent1);font-weight:600;transition:.18s;border:1px solid transparent;cursor:pointer;font-family:inherit;font-size:14px;white-space:nowrap}
+.btn:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(37,99,235,0.15)}
+.btn:active{transform:translateY(0)}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-ghost:hover{background:#f9fafb}
+.btn-primary{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#fff;border:none}
+.btn-primary:hover{box-shadow:0 8px 24px rgba(37,99,235,0.25)}
+.btn-danger{background:var(--danger);color:#fff;border:none}
+.btn-danger:hover{background:#dc1e4f;box-shadow:0 8px 20px rgba(225,29,72,0.25)}
+.icon{width:18px;height:18px;display:inline-block}
+
+/* hero */
+.hero{
+  margin-top:18px;padding:32px;border-radius:18px;color:#fff;
+  background:linear-gradient(135deg,var(--accent1),var(--accent2));
+  box-shadow:0 14px 40px rgba(36,50,108,0.12);
+  display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;
+}
+.hero .left{max-width:720px}
+.hero h1{margin:0;font-size:28px;line-height:1.3}
+.hero p{margin:10px 0 0;color:rgba(255,255,255,0.92);line-height:1.6}
+.hero .btn-hero{margin-top:14px;padding:10px 18px;border-radius:999px;background:#fff;color:var(--accent1);font-weight:700;cursor:pointer;border:none}
+
+/* layout */
+.grid{display:grid;grid-template-columns:1.2fr .8fr;gap:16px;margin-top:18px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
+.card{background:var(--card);padding:20px;border-radius:14px;border:1px solid var(--border);box-shadow:0 6px 22px rgba(15,23,42,.06);transition:transform .18s,box-shadow .18s}
+.card:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(15,23,42,.09)}
+.kpi{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px;border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,0.8),#fff);border:1px solid var(--border)}
+.kpi b{font-size:22px}
+
+/* users list */
+.user{border-radius:12px;padding:14px;border:1px solid var(--border);margin:10px 0;background:linear-gradient(180deg,#fff,#fbfdff);transition:all .18s}
+.user:hover{border-color:#c7d2fe;box-shadow:0 4px 16px rgba(37,99,235,0.08)}
+.user .meta{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.avatar{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,#eef2ff,#f8faff);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--accent1);font-size:18px;border:1px solid #eef6ff;flex-shrink:0}
+.user h4{margin:0;font-size:16px}
+.user-bio{color:var(--muted);font-size:13px;margin:6px 0 10px}
+.badge{display:inline-block;background:#eef2ff;padding:5px 10px;border-radius:999px;margin-right:6px;font-size:12px;color:var(--accent1);border:1px solid rgba(37,99,235,0.08);font-weight:500}
+
+/* chat */
+.chat-box{border:1px solid #e6e9ef;border-radius:12px;background:#fbfdff;height:400px;overflow-y:auto;padding:14px;margin-top:12px}
+.message{margin:10px 0;line-height:1.5;padding:10px 14px;border-radius:12px;max-width:80%;display:flex;gap:10px;align-items:flex-start}
+.message.me{background:linear-gradient(135deg,var(--accent1),var(--accent2));color:#fff;margin-left:auto;text-align:right;flex-direction:row-reverse}
+.message.them{background:#f3f4f6;text-align:left;margin-right:auto}
+.message-avatar{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#eef2ff,#f8faff);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent1);font-size:14px;border:1px solid #eef6ff;flex-shrink:0}
+.message.me .message-avatar{background:rgba(255,255,255,0.2);color:#fff;border-color:rgba(255,255,255,0.3)}
+.message-content{flex:1;min-width:0}
+.message-sender{font-weight:600;font-size:12px;margin-bottom:4px;opacity:0.8}
+.message-text{margin:0;word-wrap:break-word}
+.message-time{font-size:11px;margin-top:4px;opacity:0.7}
+.small{color:var(--muted);font-size:13px}
+
+/* tabs */
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:18px;overflow-x:auto}
+.tab{padding:12px 16px;border-radius:10px 10px 0 0;cursor:pointer;transition:all .18s;font-weight:500;border-bottom:2px solid transparent}
+.tab:hover{background:#f9fafb}
+.tab.active{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#fff;border-bottom-color:var(--accent1)}
+
+/* forms */
+label{display:block;margin:12px 0 4px;font-size:14px;font-weight:500;color:var(--text)}
+label .label-hint{color:var(--muted);font-weight:400;font-size:13px}
+input,select,textarea{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;margin-top:6px;transition:all .18s;background:#fff}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent1);box-shadow:0 0 0 3px rgba(37,99,235,0.1)}
+input::placeholder{color:#9ca3af}
+textarea{resize:vertical;min-height:80px}
+
+/* skill input group */
+.skill-input-group{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end}
+.skill-input-group input{flex:2;min-width:200px;margin:0}
+.skill-input-group select{flex:1;min-width:140px;margin:0}
+.skill-input-group .btn{margin:0}
+
+/* skills list */
+.skill-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:1px solid var(--border);border-radius:10px;margin:8px 0;background:linear-gradient(180deg,#fff,#fafbff);transition:all .18s}
+.skill-item:hover{border-color:#c7d2fe;box-shadow:0 2px 12px rgba(37,99,235,0.06)}
+.skill-info{display:flex;align-items:center;gap:10px;flex:1}
+.skill-name{font-weight:600;font-size:15px}
+.skill-level{background:#eef2ff;color:var(--accent1);padding:4px 10px;border-radius:999px;font-size:12px;font-weight:500}
+
+/* auth screen */
+.auth-screen{position:fixed;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+.auth-card{background:var(--card);padding:40px;border-radius:20px;box-shadow:0 20px 60px rgba(15,23,42,.15);max-width:440px;width:100%}
+.auth-logo{width:60px;height:60px;border-radius:14px;background:linear-gradient(135deg,var(--accent1),var(--accent2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:24px;box-shadow:0 10px 30px rgba(37,99,235,0.2);margin:0 auto 20px}
+.auth-title{font-size:26px;font-weight:800;margin:0 0 8px;text-align:center}
+.auth-subtitle{color:var(--muted);font-size:14px;text-align:center;margin-bottom:28px}
+.auth-form h3{font-size:20px;margin:0 0 20px;font-weight:700}
+.auth-link{text-align:center;margin-top:18px}
+.auth-link a{color:var(--accent1);text-decoration:none;font-weight:500;transition:all .18s}
+.auth-link a:hover{color:var(--accent2);text-decoration:underline}
+
+/* section headers */
+h3{font-size:18px;font-weight:700;margin:0 0 14px;color:var(--text)}
+h4{font-size:16px;font-weight:600;margin:0 0 12px}
+
+/* empty state */
+.empty-state{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty-state-icon{font-size:48px;margin-bottom:12px;opacity:0.5}
+.empty-state-text{font-size:15px}
+
+/* search input */
+.search-input{position:relative}
+.search-input input{padding-left:38px}
+.search-input::before{content:"⌕";position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:18px;color:var(--muted)}
+
+/* responsive */
+@media (max-width:1000px){
+  .grid{grid-template-columns:1fr}
+  .hero{flex-direction:column;align-items:flex-start;padding:24px}
+  .grid-3{grid-template-columns:1fr}
+  .skill-input-group{flex-direction:column}
+  .skill-input-group input,.skill-input-group select{width:100%;min-width:auto}
+  .tabs{flex-wrap:wrap}
+  .auth-card{padding:28px}
+}
+
+/* toast */
+.toast{display:none;position:fixed;right:20px;bottom:20px;background:#111;color:#fff;padding:14px 18px;border-radius:12px;opacity:.95;z-index:9999;box-shadow:0 10px 40px rgba(0,0,0,0.3);animation:slideIn .3s ease}
+@keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:.95}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* loading state */
+.btn.loading{opacity:0.7;pointer-events:none;position:relative}
+.btn.loading::after{content:"⋯";margin-left:8px;animation:blink 1s infinite}
+
+/* scrollbar styling */
+.chat-box::-webkit-scrollbar{width:8px}
+.chat-box::-webkit-scrollbar-track{background:#f1f1f1;border-radius:10px}
+.chat-box::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:10px}
+.chat-box::-webkit-scrollbar-thumb:hover{background:#94a3b8}
+</style>
+</head>
+<body>
+
+<!-- Auth Screen -->
+<div id="authScreen" class="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">SS</div>
+    <h2 class="auth-title">SkillSwap PRO</h2>
+
+    <div id="loginForm" class="auth-form">
+      <h3>Вход</h3>
+      <label>Email
+        <input id="loginEmail" type="email" placeholder="email@example.com" required>
+      </label>
+      <label>Пароль
+        <input id="loginPassword" type="password" placeholder="Минимум 6 символов" required>
+      </label>
+      <button id="loginBtn" class="btn btn-primary" style="width:100%;margin-top:16px">Войти</button>
+      <div class="auth-link">
+        <a href="#" id="showRegister">Нет аккаунта? Зарегистрироваться</a>
+      </div>
+    </div>
+
+    <div id="registerForm" class="auth-form" style="display:none">
+      <h3>Регистрация</h3>
+      <label>Имя пользователя
+        <input id="regUsername" type="text" placeholder="Ваше имя" required>
+      </label>
+      <label>Email
+        <input id="regEmail" type="email" placeholder="email@example.com" required>
+      </label>
+      <label>Пароль
+        <input id="regPassword" type="password" placeholder="Минимум 6 символов" required>
+      </label>
+      <button id="registerBtn" class="btn btn-primary" style="width:100%;margin-top:16px">Зарегистрироваться</button>
+      <div class="auth-link">
+        <a href="#" id="showLogin">Уже есть аккаунт? Войти</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main App -->
+<div id="mainApp" style="display:none">
+<div class="container">
+  <header class="header">
+    <div class="brand">
+      <div class="logo">SS</div>
+      <div>
+        <div class="title">SkillSwap PRO</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="logoutBtn" class="btn btn-danger">Выйти</button>
+    </div>
+  </header>
+
+  <section class="hero" role="banner">
+    <div class="left">
+      <h1>Меняйся навыками. Учись и учи.</h1>
+      <p>Найди людей, которые помогут тебе прокачать умения — и помоги другим взамен</p>
+    </div>
+  </section>
+
+  <section class="grid">
+    <main>
+      <div class="card">
+        <div class="tabs" role="tablist">
+          <div class="tab active" data-tab="profile">Мой профиль</div>
+          <div class="tab" data-tab="skills">Навыки</div>
+          <div class="tab" data-tab="users">Пользователи</div>
+          <div class="tab" data-tab="chat">Чат</div>
+        </div>
+
+        <!-- Profile Tab -->
+        <div id="tab-profile">
+          <h3>Редактировать профиль</h3>
+          
+          <div style="text-align:center;margin-bottom:20px">
+            <div id="avatarPreview" class="avatar" style="width:80px;height:80px;font-size:32px;margin:0 auto"></div>
+          </div>
+          
+          <label>Имя пользователя
+            <input id="profileUsername" type="text">
+          </label>
+          <label>О себе
+            <textarea id="profileBio" rows="3" placeholder="Расскажите о себе"></textarea>
+          </label>
+          <label>Аватар (URL)
+            <input id="profileAvatar" type="url" placeholder="https://example.com/avatar.jpg">
+          </label>
+          <button id="updateProfileBtn" class="btn btn-primary">Обновить профиль</button>
+        </div>
+
+        <!-- Skills Tab -->
+        <div id="tab-skills" style="display:none">
+          <h3>Мои навыки</h3>
+          <div class="skill-input-group">
+            <input id="skillName" placeholder="Название навыка" style="flex:2">
+            <select id="skillLevel" style="flex:1">
+              <option value="начинающий">Начинающий</option>
+              <option value="средний">Средний</option>
+              <option value="продвинутый">Продвинутый</option>
+              <option value="эксперт">Эксперт</option>
+            </select>
+            <button id="addSkillBtn" class="btn btn-primary">Добавить</button>
+          </div>
+          <div id="skillsList"></div>
+
+          <h3 style="margin-top:28px">Поиск навыков</h3>
+          <div class="search-input">
+            <input id="searchSkills" placeholder="Поиск по названию навыка...">
+          </div>
+          <div id="searchResults" style="margin-top:14px"></div>
+        </div>
+
+        <!-- Users Tab -->
+        <div id="tab-users" style="display:none">
+          <h3>Все пользователи</h3>
+          <div id="usersList"></div>
+        </div>
+
+        <!-- Chat Tab -->
+        <div id="tab-chat" style="display:none">
+          <h3>Чат</h3>
+          <label>Выберите собеседника
+            <select id="chatPartner"></select>
+          </label>
+          <div id="chatBox" class="chat-box"></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <input id="chatInput" placeholder="Введите сообщение..." style="flex:1">
+            <button id="sendMessageBtn" class="btn btn-primary">Отправить</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside>
+      <div class="card">
+        <h4>Статистика</h4>
+        <div class="kpi"><div>Мои навыки</div><b id="kpiMySkills">0</b></div>
+        <div style="height:8px"></div>
+        <div class="kpi"><div>Пользователи</div><b id="kpiUsers">0</b></div>
+      </div>
+
+    </aside>
+  </section>
+</div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// API Configuration
+const API_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:3000/api'
+  : `${window.location.protocol}//${window.location.host}/api`;
+let socket = null;
+let currentUser = null;
+let authToken = localStorage.getItem('authToken');
+let currentMatch = null;
+
+// Utility functions
+const $ = (s) => document.querySelector(s);
+const toast = (t) => {
+  const e = $('#toast');
+  e.textContent = t;
+  e.style.display = 'block';
+  setTimeout(() => e.style.display = 'none', 2000);
+};
+
+// API Helper
+async function apiCall(endpoint, method = 'GET', body = null) {
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`;
+  }
+
+  const config = {
+    method,
+    headers,
+  };
+
+  if (body) {
+    config.body = JSON.stringify(body);
+  }
+
+  try {
+    const response = await fetch(`${API_URL}${endpoint}`, config);
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Ошибка сервера');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('API Error:', error);
+    toast(error.message);
+    throw error;
+  }
+}
+
+// Auth functions
+async function login(email, password) {
+  const data = await apiCall('/auth/login', 'POST', { email, password });
+  authToken = data.token;
+  localStorage.setItem('authToken', authToken);
+  currentUser = data.user;
+  initApp();
+}
+
+async function register(username, email, password) {
+  const data = await apiCall('/auth/register', 'POST', { username, email, password });
+  authToken = data.token;
+  localStorage.setItem('authToken', authToken);
+  currentUser = data.user;
+  initApp();
+}
+
+function logout() {
+  authToken = null;
+  currentUser = null;
+  localStorage.removeItem('authToken');
+  if (socket) socket.disconnect();
+  $('#authScreen').style.display = 'flex';
+  $('#mainApp').style.display = 'none';
+  toast('Вы вышли из системы');
+}
+
+// Socket.io setup
+function initSocket() {
+  const socketURL = window.location.hostname === 'localhost'
+    ? 'http://localhost:3000'
+    : window.location.origin;
+  
+  socket = io(socketURL, {
+    auth: { token: authToken }
+  });
+
+  socket.on('connected', (data) => {
+    console.log('Socket подключен:', data);
+    toast('Подключено к серверу');
+  });
+
+  socket.on('newMessage', (message) => {
+    console.log('Новое сообщение получено:', message);
+    appendMessageToChat(message);
+    toast('Новое сообщение');
+  });
+
+  socket.on('messageSent', (message) => {
+    appendMessageToChat(message);
+  });
+
+  socket.on('error', (data) => {
+    toast(data.message || 'Ошибка сервера');
+  });
+
+  socket.on('disconnect', () => {
+    toast('Отключено от сервера');
+  });
+
+  socket.on('connect_error', (error) => {
+    console.error('Ошибка подключения:', error);
+    toast('Ошибка подключения к серверу');
+  });
+}
+
+// Profile functions
+async function loadProfile() {
+  try {
+    const data = await apiCall('/users/profile');
+    currentUser = data;
+    $('#profileUsername').value = data.username;
+    $('#profileBio').value = data.bio || '';
+    $('#profileAvatar').value = data.avatar || '';
+    
+    // Обновляем превью аватарки
+    updateAvatarPreview(data.avatar, data.username);
+  } catch (error) {
+    console.error('Ошибка загрузки профиля:', error);
+    toast('Ошибка загрузки профиля');
+  }
+}
+
+function updateAvatarPreview(avatarUrl, username) {
+  const preview = $('#avatarPreview');
+  
+  if (avatarUrl && avatarUrl.trim() !== '') {
+    // Показываем изображение
+    preview.style.backgroundImage = `url('${avatarUrl}')`;
+    preview.style.background = `url('${avatarUrl}') center/cover`;
+    preview.textContent = '';
+  } else {
+    // Показываем первую букву имени
+    preview.style.backgroundImage = '';
+    preview.style.background = 'linear-gradient(135deg,#eef2ff,#f8faff)';
+    preview.textContent = username ? username[0].toUpperCase() : '?';
+  }
+}
+
+async function updateProfile() {
+  const username = $('#profileUsername').value.trim();
+  const bio = $('#profileBio').value.trim();
+  const avatar = $('#profileAvatar').value.trim();
+
+  if (!username) {
+    toast('Имя пользователя обязательно');
+    return;
+  }
+
+  try {
+    console.log('Обновление профиля:', { username, bio, avatar });
+    const data = await apiCall('/users/profile', 'PUT', { username, bio, avatar });
+    currentUser = data.user;
+    toast('Профиль обновлен');
+    await loadProfile();
+  } catch (error) {
+    console.error('Ошибка обновления профиля:', error);
+  }
+}
+
+// Skills functions
+async function loadMySkills() {
+  try {
+    const data = await apiCall('/skills/list');
+    const list = $('#skillsList');
+    list.innerHTML = '';
+    
+    if (data.skills.length === 0) {
+      list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">∅</div><div class="empty-state-text">У вас пока нет навыков. Добавьте первый!</div></div>';
+      $('#kpiMySkills').textContent = '0';
+      return;
+    }
+
+    data.skills.forEach(skill => {
+      const div = document.createElement('div');
+      div.className = 'skill-item';
+      div.innerHTML = `
+        <div class="skill-info">
+          <span class="skill-name">${skill.skill_name}</span>
+          <span class="skill-level">${skill.level}</span>
+        </div>
+        <button class="btn btn-danger" data-skill-id="${skill.id}">Удалить</button>
+      `;
+      
+      // Добавляем обработчик события на кнопку удаления
+      const deleteBtn = div.querySelector('.btn-danger');
+      deleteBtn.addEventListener('click', () => deleteSkill(skill.id));
+      
+      list.appendChild(div);
+    });
+    
+    $('#kpiMySkills').textContent = data.skills.length;
+  } catch (error) {
+    console.error('Ошибка загрузки навыков:', error);
+    toast('Ошибка загрузки навыков');
+  }
+}
+
+async function addSkill() {
+  const skill_name = $('#skillName').value.trim();
+  const level = $('#skillLevel').value;
+
+  if (!skill_name) {
+    toast('Введите название навыка');
+    return;
+  }
+
+  try {
+    await apiCall('/skills/add', 'POST', { skill_name, level });
+    $('#skillName').value = '';
+    toast('Навык добавлен');
+    await loadMySkills();
+  } catch (error) {
+    console.error('Ошибка добавления навыка:', error);
+  }
+}
+
+async function deleteSkill(id) {
+  if (!confirm('Удалить навык?')) return;
+  
+  try {
+    console.log('Удаление навыка с ID:', id);
+    await apiCall(`/skills/${id}`, 'DELETE');
+    toast('Навык удален');
+    await loadMySkills();
+  } catch (error) {
+    console.error('Ошибка удаления навыка:', error);
+    toast('Ошибка удаления навыка');
+  }
+}
+
+async function searchSkills() {
+  const query = $('#searchSkills').value.trim();
+  const results = $('#searchResults');
+  
+  if (!query) {
+    results.innerHTML = '';
+    return;
+  }
+
+  try {
+    console.log('Поиск навыка:', query);
+    const data = await apiCall(`/skills/search?skill_name=${encodeURIComponent(query)}`);
+    results.innerHTML = '';
+
+    if (!data.results || data.results.length === 0) {
+      results.innerHTML = '<div class="empty-state"><div class="empty-state-icon">∅</div><div class="empty-state-text">Ничего не найдено по запросу "' + query + '"</div></div>';
+      return;
+    }
+
+    console.log('Найдено навыков:', data.results.length);
+    
+    data.results.forEach(result => {
+      const div = document.createElement('div');
+      div.className = 'skill-item';
+      div.innerHTML = `
+        <div class="skill-info">
+          <span class="skill-name">${result.skill_name}</span>
+          <span class="skill-level">${result.level}</span>
+          <span class="small" style="margin-left:auto">@ ${result.user.username}</span>
+        </div>
+      `;
+      results.appendChild(div);
+    });
+  } catch (error) {
+    console.error('Ошибка поиска навыков:', error);
+    results.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✕</div><div class="empty-state-text">Ошибка поиска</div></div>';
+  }
+}
+
+// Users functions
+async function loadUsers() {
+  try {
+    const data = await apiCall('/matches/find');
+    const list = $('#usersList');
+    list.innerHTML = '';
+
+    if (data.matches.length === 0) {
+      list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">∅</div><div class="empty-state-text">Пользователей не найдено</div></div>';
+      return;
+    }
+
+    data.matches.forEach(user => {
+      const div = document.createElement('div');
+      div.className = 'user';
+      
+      // Создаем аватарку
+      const avatarHtml = user.avatar && user.avatar.trim() !== '' 
+        ? `<div class="avatar" style="background:url('${user.avatar}') center/cover"></div>`
+        : `<div class="avatar">${user.username[0].toUpperCase()}</div>`;
+      
+      div.innerHTML = `
+        <div class="meta">
+          ${avatarHtml}
+          <div style="flex:1">
+            <h4>${user.username}</h4>
+          ${user.bio ? `<div class="user-bio">${user.bio}</div>` : '<div class="user-bio" style="font-style:italic">Нет описания</div>'}
+        </div>
+      </div>
+      <button class="btn btn-primary" data-user-id="${user.id}" data-username="${user.username}">Написать</button>
+    `;
+      
+      // Добавляем обработчик на кнопку чата
+      const chatBtn = div.querySelector('.btn-primary');
+      chatBtn.addEventListener('click', () => startChat(user.id, user.username));
+      
+      list.appendChild(div);
+    });
+
+    $('#kpiUsers').textContent = data.matches.length;
+    
+    // Update chat partners list
+    const select = $('#chatPartner');
+    select.innerHTML = '<option value="">Выберите собеседника...</option>';
+    data.matches.forEach(user => {
+      const option = document.createElement('option');
+      option.value = user.id;
+      option.textContent = user.username;
+      select.appendChild(option);
+    });
+  } catch (error) {
+    console.error('Ошибка загрузки пользователей:', error);
+    toast('Ошибка загрузки пользователей');
+  }
+}
+
+// Chat functions
+async function startChat(userId, username) {
+  try {
+    console.log('Начало чата с:', username, userId);
+    // Create or find match
+    try {
+      const data = await apiCall('/matches/create', 'POST', { user2_id: userId });
+      currentMatch = data.match.id;
+      console.log('Match создан:', currentMatch);
+    } catch (e) {
+      // Match might already exist, try to find it
+      console.log('Match существует, ищем...');
+      const matches = await apiCall('/matches/list');
+      const match = matches.matches.find(m => 
+        m.user1.id === userId || m.user2.id === userId
+      );
+      if (match) {
+        currentMatch = match.id;
+        console.log('Match найден:', currentMatch);
+      }
+    }
+
+    // Switch to chat tab
+    document.querySelector('[data-tab="chat"]').click();
+    $('#chatPartner').value = userId;
+    await loadChatHistory(userId);
+    toast(`Чат с ${username}`);
+  } catch (error) {
+    console.error('Ошибка открытия чата:', error);
+    toast('Ошибка открытия чата');
+  }
+}
+
+async function loadChatHistory(partnerId) {
+  if (!currentMatch) {
+    console.log('Нет активного match для загрузки истории');
+    return;
+  }
+
+  try {
+    console.log('Загрузка истории для match:', currentMatch);
+    const data = await apiCall(`/messages/history?match_id=${currentMatch}`);
+    const box = $('#chatBox');
+    box.innerHTML = '';
+
+    if (data.messages && data.messages.length > 0) {
+      data.messages.forEach(msg => {
+        appendMessageToChat(msg, false);
+      });
+      console.log('Загружено сообщений:', data.messages.length);
+    } else {
+      box.innerHTML = '<div class="empty-state"><div class="empty-state-icon">∅</div><div class="empty-state-text">Начните разговор</div></div>';
+    }
+
+    box.scrollTop = box.scrollHeight;
+  } catch (error) {
+    console.error('Ошибка загрузки истории чата:', error);
+  }
+}
+
+function appendMessageToChat(message, scroll = true) {
+  const box = $('#chatBox');
+  const div = document.createElement('div');
+  const isMe = message.sender.id === currentUser.id || message.sender._id === currentUser.id;
+  div.className = `message ${isMe ? 'me' : 'them'}`;
+  
+  const time = new Date(message.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  
+  // Создаем аватарку
+  const avatar = message.sender.avatar;
+  const username = message.sender.username;
+  const avatarHtml = avatar && avatar.trim() !== ''
+    ? `<div class="message-avatar" style="background:url('${avatar}') center/cover"></div>`
+    : `<div class="message-avatar">${username[0].toUpperCase()}</div>`;
+  
+  div.innerHTML = `
+    ${avatarHtml}
+    <div class="message-content">
+      ${!isMe ? `<div class="message-sender">${username}</div>` : ''}
+      <div class="message-text">${message.text}</div>
+      <div class="message-time">${time}</div>
+    </div>
+  `;
+  
+  box.appendChild(div);
+  
+  if (scroll) {
+    box.scrollTop = box.scrollHeight;
+  }
+}
+
+async function sendMessage() {
+  const partnerId = $('#chatPartner').value;
+  const text = $('#chatInput').value.trim();
+
+  if (!partnerId || !text) {
+    toast('Выберите собеседника и введите сообщение');
+    return;
+  }
+
+  try {
+    if (!currentMatch) {
+      const data = await apiCall('/matches/create', 'POST', { user2_id: partnerId });
+      currentMatch = data.match.id;
+    }
+
+    // Send via Socket.io for real-time delivery
+    socket.emit('sendMessage', {
+      match_id: currentMatch,
+      text,
+      receiver_id: partnerId
+    });
+
+    $('#chatInput').value = '';
+  } catch (error) {
+    console.error('Ошибка отправки сообщения:', error);
+    toast('Ошибка отправки сообщения');
+  }
+}
+
+// Tab switching
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    
+    const which = tab.dataset.tab;
+    ['profile', 'skills', 'users', 'chat'].forEach(t => {
+      $(`#tab-${t}`).style.display = which === t ? 'block' : 'none';
+    });
+
+    if (which === 'skills') loadMySkills();
+    if (which === 'users') loadUsers();
+  };
+});
+
+// Event listeners
+$('#loginBtn').onclick = async () => {
+  const email = $('#loginEmail').value.trim();
+  const password = $('#loginPassword').value.trim();
+  
+  if (!email || !password) {
+    toast('Заполните все поля');
+    return;
+  }
+  
+  const btn = $('#loginBtn');
+  btn.classList.add('loading');
+  btn.disabled = true;
+  
+  try {
+    await login(email, password);
+    toast('Вход выполнен');
+  } catch (e) {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+  }
+};
+
+$('#registerBtn').onclick = async () => {
+  const username = $('#regUsername').value.trim();
+  const email = $('#regEmail').value.trim();
+  const password = $('#regPassword').value.trim();
+
+  if (!username || !email || !password) {
+    toast('Заполните все поля');
+    return;
+  }
+
+  if (password.length < 6) {
+    toast('Пароль должен содержать минимум 6 символов');
+    return;
+  }
+  
+  const btn = $('#registerBtn');
+  btn.classList.add('loading');
+  btn.disabled = true;
+
+  try {
+    await register(username, email, password);
+    toast('Регистрация выполнена успешно');
+  } catch (e) {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+  }
+};
+
+$('#showRegister').onclick = (e) => {
+  e.preventDefault();
+  $('#loginForm').style.display = 'none';
+  $('#registerForm').style.display = 'block';
+};
+
+$('#showLogin').onclick = (e) => {
+  e.preventDefault();
+  $('#registerForm').style.display = 'none';
+  $('#loginForm').style.display = 'block';
+};
+
+$('#logoutBtn').onclick = logout;
+$('#updateProfileBtn').onclick = updateProfile;
+$('#addSkillBtn').onclick = addSkill;
+$('#searchSkills').oninput = searchSkills;
+$('#profileAvatar').oninput = (e) => {
+  const url = e.target.value.trim();
+  const username = $('#profileUsername').value || currentUser?.username || 'User';
+  updateAvatarPreview(url, username);
+};
+$('#sendMessageBtn').onclick = sendMessage;
+$('#chatInput').onkeypress = (e) => {
+  if (e.key === 'Enter') sendMessage();
+};
+$('#loginEmail').onkeypress = (e) => {
+  if (e.key === 'Enter') $('#loginBtn').click();
+};
+$('#loginPassword').onkeypress = (e) => {
+  if (e.key === 'Enter') $('#loginBtn').click();
+};
+$('#regPassword').onkeypress = (e) => {
+  if (e.key === 'Enter') $('#registerBtn').click();
+};
+
+$('#chatPartner').onchange = (e) => {
+  const partnerId = e.target.value;
+  if (partnerId) {
+    startChat(partnerId, e.target.options[e.target.selectedIndex].text);
+  }
+};
+
+// Initialize app
+async function initApp() {
+  try {
+    await loadProfile();
+    initSocket();
+    $('#authScreen').style.display = 'none';
+    $('#mainApp').style.display = 'block';
+    loadMySkills();
+    loadUsers();
+  } catch (e) {
+    logout();
+  }
+}
+
+// Check if already logged in
+if (authToken) {
+  initApp();
+}
+</script>
+</body>
+</html>
